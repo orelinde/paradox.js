@@ -155,24 +155,19 @@ class ParadoxTable {
         this.dosGlobalCodePage = new integer(buffer, this.sometimesNumFields.upperlimmit)
         //skipped bytes 6c-6f,  see /documents/PxFORMAT.txt
         this.changeCount4 = new integer(buffer, parseInt(70, 16))
-        var TFldInfoRecArray = []
+        this.tFldInfoRecArray = []
 
         for (var i = parseInt(78, 16); i < (parseInt(78, 16) + this.numFields.getValue() * 2); i += 2) {
             //console.log(i.toString(16))
-            TFldInfoRecArray.push(new TFldInfoRec(buffer, i))
+            this.tFldInfoRecArray.push(new TFldInfoRec(buffer, i))
         }
 
-        var pcharArray = []
+        this.pcharArray = []
 
-        var j = i
-
-        for (var i = i; i <= j + this.numFields.getValue() * 4; i += 4) {
-            pcharArray.push(new pchar(buffer, i))
+        for (var j = i; i <= j + this.numFields.getValue() * 4; i += 4) {
+            this.pcharArray.push(new pchar(buffer, i))
         }
 
-        //console.log(pcharArray)
-
-        this.pcharArray = pcharArray
         var initialDBNameStart = i
         var initialDBNameEnd = i
 
@@ -193,48 +188,48 @@ class ParadoxTable {
             blockLimit++
         }
 
-        var fieldsString = buffer.slice(initialBlockLimit, blockLimit).toString('utf8')
-        this.fieldArray = fieldsString.split('\u0000')
+        this.fieldArray = buffer.slice(initialBlockLimit, blockLimit).toString('utf8').split('\u0000');
 
-        for (var k in TFldInfoRecArray) {
-            TFldInfoRecArray[k].addName(this.fieldArray[k])
+        for (var k=0; k < this.tFldInfoRecArray.length; k++) {
+            this.tFldInfoRecArray[k].addName(this.fieldArray[k])
         }
 
-        this.TFldInfoRecArray = TFldInfoRecArray
-
-        //console.log(TFldInfoRecArray)
+        //console.log(tFldInfoRecArray)
         this.firstaddDataSize = this.buffer.slice(this.headerSize.getValue() + 4, this.headerSize.getValue() + 6)
         //there must be a better way to find the portion of the .db file which contains all the field names
         //I decided to skip what comes after the field names, see /documents/PxFORMAT.txt . I'm assuming that the database to be read is unencrypted
     }
-
     
     /**
-     * (Generator) Returns all records one after another
+     * (Generator) Returns all records one after another with All columns or the specified columns only
+     * @param {Array[String]} columns List of columns that will be returned 
      */
-    * returnRecords() {
+    * returnRecords(columns = []) {
         const _getAddDataSize = (buff, offset) => buff.slice(offset + 4, offset + 6);
-        var blockSize = this.maxTableSize.getValue() * 1024
+        const blockSize = this.maxTableSize.getValue() * 1024
 
-        var numberOfBlocks = this.fileBlocks.getValue()
+        const numberOfBlocks = this.fileBlocks.getValue()
 
         //Go through each block
         for (var i = 0; i < numberOfBlocks; i++) {
-            var addDataSize = _getAddDataSize(this.buffer, this.headerSize.getValue() + blockSize * i);
-            var numRecordsInBlock = addDataSize.readUInt16LE() / this.recordSize.getValue() + 1;
+            const addDataSize = _getAddDataSize(this.buffer, this.headerSize.getValue() + blockSize * i);
+            const numRecordsInBlock = addDataSize.readUInt16LE() / this.recordSize.getValue() + 1;
             var recordsStart = this.headerSize.getValue() + blockSize * i + 6;
             //Go through each record
             for (var j = 0; j < numRecordsInBlock; j++) {
                 const record = {};
 
                 //Go through each field
-                for (var k = 0; k < this.TFldInfoRecArray.length; k++) {
-                    const name = this.TFldInfoRecArray[k].name;
-                    const valueBuffer = this.buffer.slice(recordsStart, recordsStart + this.TFldInfoRecArray[k].getSize());
-                    const field = new Field(name, this.TFldInfoRecArray[k].getType(), valueBuffer, "ascii");
+                for (var k = 0; k < this.tFldInfoRecArray.length; k++) {
+                    const name = this.tFldInfoRecArray[k].name;
+                    
+                    if(!columns.length || columns.includes(name)){
+                        const valueBuffer = this.buffer.slice(recordsStart, recordsStart + this.tFldInfoRecArray[k].getSize());
+                        const field = new Field(name, this.tFldInfoRecArray[k].getType(), valueBuffer);
+                        record[name] = field.value;
+                    }
 
-                    record[name] = field.value;
-                    recordsStart += this.TFldInfoRecArray[k].getSize();
+                    recordsStart += this.tFldInfoRecArray[k].getSize();
                 }
 
                 yield record;
@@ -243,7 +238,7 @@ class ParadoxTable {
     }
 
     dumpToCSV(callback, separator = ";") {
-        var FIELDS = this.TFldInfoRecArray.map(x => x.name).join(separator)
+        var FIELDS = this.tFldInfoRecArray.map(x => x.name).join(separator)
         fs.writeFileSync("./output.csv", FIELDS)
 
         function writeBlock(block, callback) {
@@ -296,15 +291,15 @@ class ParadoxTable {
                 var record = []
 
                 //Go through each field
-                for (var k = 0; k < this.TFldInfoRecArray.length; k++) {
+                for (var k = 0; k < this.tFldInfoRecArray.length; k++) {
 
-                    record.push(new Field(this.TFldInfoRecArray[k].name,
-                        this.TFldInfoRecArray[k].getType(),
+                    record.push(new Field(this.tFldInfoRecArray[k].name,
+                        this.tFldInfoRecArray[k].getType(),
                         this.buffer.slice(recordsStart,
-                            recordsStart + this.TFldInfoRecArray[k].getSize()), "ascii"
+                            recordsStart + this.tFldInfoRecArray[k].getSize()), "ascii"
                     )
                     )
-                    recordsStart += this.TFldInfoRecArray[k].getSize()
+                    recordsStart += this.tFldInfoRecArray[k].getSize()
 
                 }
                 records.push(record)

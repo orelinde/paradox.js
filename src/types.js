@@ -123,6 +123,9 @@ class pointer {
     }
 }
 
+/**
+ * Table Field information
+ */
 class TFldInfoRec {
     constructor(buffer, offset = 0, bigEndian = true){
         this.upperlimmit = offset + 2
