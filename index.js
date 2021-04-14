@@ -118,7 +118,7 @@ class ParadoxTable {
         this.unknown2 = new pointer(buffer, this.primaryIndexWorkspace.upperlimmit)
 
         //skipped bytes 1e-20,  see /documents/PxFORMAT.txt
-
+        
         this.numFields = new integer(buffer, parseInt(21, 16), false)
         this.primaryKeyFields = new integer(buffer, this.numFields.upperlimmit)
         this.encryption1 = new longint(buffer, this.primaryKeyFields.upperlimmit)
@@ -156,7 +156,7 @@ class ParadoxTable {
         //skipped bytes 6c-6f,  see /documents/PxFORMAT.txt
         this.changeCount4 = new integer(buffer, parseInt(70, 16))
         this.tFldInfoRecArray = []
-
+        
         for (var i = parseInt(78, 16); i < (parseInt(78, 16) + this.numFields.getValue() * 2); i += 2) {
             //console.log(i.toString(16))
             this.tFldInfoRecArray.push(new TFldInfoRec(buffer, i))
@@ -166,13 +166,13 @@ class ParadoxTable {
 
         for (var j = i; i <= j + this.numFields.getValue() * 4; i += 4) {
             this.pcharArray.push(new pchar(buffer, i))
-        }
+        } 
 
         var initialDBNameStart = i
         var initialDBNameEnd = i
 
         while (buffer[initialDBNameEnd] !== 0) {
-            initialDBNameEnd++
+            initialDBNameEnd++ 
         }
 
         this.initialTableName = buffer.slice(initialDBNameStart, initialDBNameEnd)
@@ -236,78 +236,6 @@ class ParadoxTable {
             }
         }
     }
-
-    dumpToCSV(callback, separator = ";") {
-        var FIELDS = this.tFldInfoRecArray.map(x => x.name).join(separator)
-        fs.writeFileSync("./output.csv", FIELDS)
-
-        function writeBlock(block, callback) {
-            var out = ""
-            if (callback) {
-                out = callback(block)
-            } else {
-                var excluded = [12, 13, 14, 15, 16, 23, 24]
-                var out = []
-                for (var i = 0; i < block.length; i++) {
-                    var r = block[i].map(x => {
-                        if (excluded.indexOf(x.type) === -1) {
-                            if (x.type === 1) {
-                                return x.value.replace(/\0/g, '')
-                            }
-                            return x.value
-                        } else {
-                            return `[ ${x.typeName} ]`
-                        }
-                    })
-
-                    out.push(r.join(separator))
-                }
-
-                out = "\n" + out.join("\n")
-            }
-
-            fs.appendFileSync("./output.csv", out)
-        }
-
-        var recordsStart = this.headerSize.getValue() + 6
-
-        var blockSize = this.maxTableSize.getValue() * 1024
-        //console.log("BlockSize", blockSize)
-        //console.log("BlockSize", this.fileBlocks.getValue())
-
-        var numberOfBlocks = this.fileBlocks.getValue()
-        var getAddDataSize = (buff, offset) => buff.slice(offset + 4, offset + 6)
-
-        //Go through each block
-        for (var i = 0; i < numberOfBlocks; i++) {
-            var addDataSize = getAddDataSize(this.buffer, this.headerSize.getValue() + blockSize * i)
-            //console.log( (this.headerSize.getValue() + blockSize * i).toString(16))
-            var numRecordsInBlock = addDataSize.readUInt16LE() / this.recordSize.getValue() + 1
-            var recordsStart = this.headerSize.getValue() + blockSize * i + 6
-            //console.log(recordsStart.toString(16), r/this.numRecords.getValue())
-            //Go through each record
-            var records = []
-            for (var j = 0; j < numRecordsInBlock; j++) {
-                var record = []
-
-                //Go through each field
-                for (var k = 0; k < this.tFldInfoRecArray.length; k++) {
-
-                    record.push(new Field(this.tFldInfoRecArray[k].name,
-                        this.tFldInfoRecArray[k].getType(),
-                        this.buffer.slice(recordsStart,
-                            recordsStart + this.tFldInfoRecArray[k].getSize()), "ascii"
-                    )
-                    )
-                    recordsStart += this.tFldInfoRecArray[k].getSize()
-
-                }
-                records.push(record)
-            }
-
-            writeBlock(records, callback)
-        }
-    }
 }
 
 class Field {
@@ -329,22 +257,17 @@ class Field {
                 break
             case 3:
                 //        |      |            $03     2   "S"  Short integer                           |
-                var test = unsetBit(this.valueBuffer)
-                this.value = test ? test.readUInt16BE() : test
+                this.value = value.readUInt16LE();
                 break
             case 4:
                 //        |      |            $04     4   "I"  Long integer                            |
-                var test = unsetBit(this.valueBuffer)
-                this.value = test ? test.readUInt32BE() : test
+                this.value = value.readUInt32BE();
                 break
             case 5:
             //        |      |            $05     8   "$"  currency                                |
             case 6:
                 //        |      |            $06     8   "N"  Number                                  |
-
-                //When it's empty its value its going to be 0x00 
-                var test = unsetBit(this.valueBuffer)
-                this.value = test ? test.readDoubleBE() : test
+                this.value = value.readDoubleBE();
                 break
             case 9:
                 //        |      |            $09     1   "L"  Logical                                 |
@@ -397,11 +320,25 @@ class Field {
     }
 }
 
+function doX(f){
+    var file = fs.readFileSync(f)
+        var t = new ParadoxTable(file)
+        console.time();
+        for(let record of t.returnRecords()){
+           // console.log(record)
+        }
+        console.timeEnd();
+}
+
 if (!module.parent) {
     if (argv.f) {
-        var file = fs.readFileSync(argv.f)
-        var t = new ParadoxTable(file)
-        t.dumpToCSV()
+        // Measure Performance
+        doX(argv.f);
+        doX(argv.f);
+        doX(argv.f);
+        doX(argv.f);
+        doX(argv.f);
+        doX(argv.f);
     } else {
         console.log("-f argument required")
     }
