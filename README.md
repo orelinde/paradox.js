@@ -13,9 +13,6 @@ A library for reading paradox database files (*.db)
 
 ## Getting records
 
-You have to import the ParadoxTable and use `.findRecords()` method in order to get all records. This method also accepts an object which can contain the following properties: `maxBlockNumber` (an integer), `filter` (a function), `disableWarning` (a boolean).
-
-
 ###  All collumns
 ```javascript
   /** 
