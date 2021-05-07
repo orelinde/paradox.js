@@ -1,54 +1,58 @@
 # Paradox.js
-
 A library for reading paradox database files (*.db)
 
 
 # Usage
-
-
-
 ```javascript
-  var ParadoxTable = require("paradox.js")
-  var fs = require("fs")
+  const ParadoxTable = require("paradox.js")
+  const fs = require("fs")
   
-  var file = fs.readFileSync("path/to/file")
-  var table = new ParadoxTable(file)
+  const file = fs.readFileSync("path/to/file")
+  const table = new ParadoxTable(file)
 ```
 
-### Getting records
+## Getting records
 
 You have to import the ParadoxTable and use `.findRecords()` method in order to get all records. This method also accepts an object which can contain the following properties: `maxBlockNumber` (an integer), `filter` (a function), `disableWarning` (a boolean).
 
 
+###  All collumns
 ```javascript
-  var records = table.findRecords({
-    filter: function(record){
-      if(someCriteria(record)){
-        return true
-      }
-      return false
-    }
-  })
+  /** 
+  * Generator method to avoid memory consumption
+  * The record is an object where the table column is set as property
+  * Example table person -> collumns | name | lastname | birthday
+  * {name:'', lastname:'', birthday:''} 
+  **/
+  for (let record of table.returnRecords()) {
+        const name = record.name;
+        const lastname = record.lastname;
+        const birthday = record.birthday;
+  }
 ```
 
+### Specific collumns only
+To get only specifc collumns in, you can pass an array with the column names that must be returned.
+```javascript
+  /** 
+  * Generator method to avoid memory consumption
+  * The record is an object where the table column is set as property
+  * Example table person -> collumns | name | lastname | birthday
+  * {name:'', lastname:''} 
+  **/
+  for (let record of table.returnRecords(["name", "lastname"])) {
+        const name = record.name;
+        const lastname = record.lastname;
+  }
+```
+
+---
 When the file size exceeds 100mb it will probably produce a memory error, so the use `--max-old-space-size` flag when running your script.
 
-### Creating a CSV file
-
-```javascript
-  table.dumpToCSV()
-```
-
-The `.dumpToCSV()` method will create a `output.csv` file. This method also accepts a callback which will receive an array of records (a record is an array of Fields) in case you want to have more control over the output.
 
 ### Notes
 
 The following data types: Memo BLOb, Binary Large Object, Formatted Memo BLOb, OLE, Graphic BLOb, BCD and Bytes are currently not supported, so you will have to decode them yourself.
-
-# TODO
-
-1. Add support for more data types.
-2. If possible, improve perfomance and maybe do some refactoring.
 
 ***
 
