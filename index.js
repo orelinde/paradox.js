@@ -190,14 +190,13 @@ class ParadoxTable {
 
                 //Go through each field
                 for (let k = 0; k < this.tFldInfoRecArray.length; k++) {
-                    const name = this.tFldInfoRecArray[k].name;
-                    if (name === 'BarcodeLayout') debugger;
                     const field = this.tFldInfoRecArray[k];
+                    const name = field.name;
                     if (!columns.length || columns.includes(name)) {
                         if (field.getType() === 1) {
 
                             // Iterate over the bytes in this string and remove all ascii 0/null characters
-                            // this increases performance, since the 0 bytes don't beed to be converted to its 
+                            // this increases performance, since the 0 bytes don't need to be converted to its 
                             // u0000 equivalent
                             const fieldSize = field.getSize();
                             let bytesForString = [];
